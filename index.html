@@ -303,21 +303,41 @@ Rules:
 
         loader.load(VRM_URL,
             gltf => {
+                console.log('GLTF loaded, checking for VRM data...');
+                console.log('gltf.userData:', gltf.userData);
+                
                 vrm = gltf.userData.vrm;
+                
+                if (!vrm) {
+                    console.error('NO VRM DATA FOUND! This might not be a valid VRM file.');
+                    // Still try to show the model
+                    scene.add(gltf.scene);
+                    gltf.scene.rotation.y = Math.PI;
+                    return;
+                }
+                
                 VRMUtils.removeUnnecessaryJoints(vrm.scene);
                 VRMUtils.removeUnnecessaryVertices(vrm.scene);
                 scene.add(vrm.scene);
                 vrm.scene.rotation.y = Math.PI;
                 
-                console.log('VRM Loaded!');
-                console.log('Available expressions:', vrm.expressionManager?.expressions?.map(e => e.expressionName));
+                console.log('=== VRM DEBUG INFO ===');
+                console.log('VRM Version:', vrm.meta?.metaVersion);
+                console.log('Has humanoid:', !!vrm.humanoid);
+                console.log('Has expressionManager:', !!vrm.expressionManager);
                 
-                // Set initial relaxed expression
+                if (vrm.humanoid) {
+                    console.log('Humanoid bones:', Object.keys(vrm.humanoid.rawHumanBones || {}));
+                }
+                
                 if (vrm.expressionManager) {
+                    console.log('Expressions:', vrm.expressionManager.expressions?.map(e => e.expressionName));
                     vrm.expressionManager.setValue('relaxed', 0.3);
                 }
+                
+                console.log('=== VRM LOADED SUCCESSFULLY ===');
             },
-            p => console.log('Loading:', (p.loaded / p.total * 100).toFixed(0) + '%'),
+            p => console.log((p.loaded / p.total * 100).toFixed(0) + '%'),
             e => console.error('VRM load error:', e)
         );
 
