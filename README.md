@@ -1,2 +1,0 @@
-# kuro-ai
-AGENT AI
