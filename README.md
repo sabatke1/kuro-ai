@@ -7,12 +7,11 @@ A minimal 3D AI assistant with voice interaction.
 - 3D VRM model with animations
 - Voice input (microphone)
 - Voice output (text-to-speech)  
-- Powered by Gemini AI (free)
+- Powered by ElevenLabs 
 
 ## Setup
 
-1. Download/clone this repository
-2. Get a free API key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
+
 3. Open `index.html` in your browser
 4. Paste your API key when prompted
 
