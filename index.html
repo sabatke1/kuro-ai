@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kuro</title>
+    <title>Kuro AI</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -95,50 +95,6 @@
         .recording { background: rgba(255,80,80,0.15) !important; }
         .recording svg { fill: rgba(255,80,80,0.7) !important; }
 
-        .modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(5,5,10,0.95);
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-        }
-        .modal.show { display: flex; }
-
-        .modal-box {
-            text-align: center;
-            max-width: 300px;
-            padding: 40px 30px;
-        }
-        .modal-box h2 {
-            font-size: 15px;
-            font-weight: 400;
-            margin-bottom: 6px;
-            opacity: 0.85;
-        }
-        .modal-box p {
-            font-size: 11px;
-            opacity: 0.35;
-            margin-bottom: 25px;
-            line-height: 1.7;
-        }
-        .modal-box a { color: rgba(255,255,255,0.5); }
-        .modal-box input {
-            width: 100%;
-            margin-bottom: 12px;
-            background: rgba(255,255,255,0.04);
-            text-align: center;
-        }
-        .modal-box button {
-            width: 100%;
-            height: 44px;
-            border-radius: 22px;
-            font-size: 13px;
-            color: rgba(255,255,255,0.7);
-            background: rgba(255,255,255,0.06);
-        }
-
         .dots span {
             display: inline-block;
             width: 3px;
@@ -172,15 +128,6 @@
         </button>
     </div>
 
-    <div class="modal" id="modal">
-        <div class="modal-box">
-            <h2>Gemini API Key</h2>
-            <p>Free at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a></p>
-            <input type="password" id="apiInput" placeholder="Paste key here">
-            <button onclick="saveKey()">Continue</button>
-        </div>
-    </div>
-
     <script type="importmap">
     {
         "imports": {
@@ -194,11 +141,9 @@
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
         import { VRMLoaderPlugin, VRMUtils } from 'https://unpkg.com/@pixiv/three-vrm@2.1.0/lib/three-vrm.module.min.js';
-        
-        console.log('🚀 Kuro AI - Versão com Sincronização de Voz Melhorada');
 
         // ========== CONFIG ==========
-        let API_KEY = localStorage.getItem('kuro_gemini_key') || '';
+        const API_KEY = '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';
         const VRM_URL = 'kuro.vrm';
 
         const SYSTEM_PROMPT = `You are Kuro, an adorable AI assistant with an anime personality.
@@ -229,21 +174,8 @@ Rules:
         let isBlinking = false;
         let nextBlinkTime = 3;
 
-        // ========== MODAL ==========
-        if (!API_KEY) document.getElementById('modal').classList.add('show');
-
-        window.saveKey = function() {
-            const key = document.getElementById('apiInput').value.trim();
-            if (key) {
-                API_KEY = key;
-                localStorage.setItem('kuro_gemini_key', key);
-                document.getElementById('modal').classList.remove('show');
-            }
-        };
-
         // ========== MOUSE TRACKING ==========
         document.addEventListener('mousemove', (e) => {
-            // Convert mouse position to -1 to 1 range
             mouseX = (e.clientX / window.innerWidth) * 2 - 1;
             mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
         });
@@ -306,13 +238,11 @@ Rules:
         loader.load(VRM_URL,
             gltf => {
                 console.log('GLTF loaded, checking for VRM data...');
-                console.log('gltf.userData:', gltf.userData);
                 
                 vrm = gltf.userData.vrm;
                 
                 if (!vrm) {
-                    console.error('NO VRM DATA FOUND! This might not be a valid VRM file.');
-                    // Still try to show the model
+                    console.error('NO VRM DATA FOUND!');
                     scene.add(gltf.scene);
                     gltf.scene.rotation.y = Math.PI;
                     return;
@@ -323,26 +253,12 @@ Rules:
                 scene.add(vrm.scene);
                 vrm.scene.rotation.y = Math.PI;
                 
-                console.log('=== VRM DEBUG INFO ===');
-                console.log('VRM Version:', vrm.meta?.metaVersion);
-                console.log('Has humanoid:', !!vrm.humanoid);
-                console.log('Has expressionManager:', !!vrm.expressionManager);
-                
-                if (vrm.humanoid) {
-                    // Check which method works for getting bones
-                    const testBone = vrm.humanoid.getNormalizedBoneNode?.('leftUpperArm') || 
-                                    vrm.humanoid.getRawBoneNode?.('leftUpperArm') ||
-                                    vrm.humanoid.getBoneNode?.('leftUpperArm');
-                    console.log('Bone access method works:', !!testBone);
-                    console.log('Test bone (leftUpperArm):', testBone);
-                }
-                
                 if (vrm.expressionManager) {
-                    console.log('Expressions:', vrm.expressionManager.expressions?.map(e => e.expressionName));
+                    console.log('Available expressions:', vrm.expressionManager.expressions?.map(e => e.expressionName));
                     vrm.expressionManager.setValue('relaxed', 0.3);
                 }
                 
-                console.log('=== VRM LOADED SUCCESSFULLY ===');
+                console.log('✅ VRM loaded successfully');
             },
             p => console.log((p.loaded / p.total * 100).toFixed(0) + '%'),
             e => console.error('VRM load error:', e)
@@ -355,7 +271,6 @@ Rules:
             const t = clock.elapsedTime;
 
             if (vrm && vrm.humanoid) {
-                // Get bones using the correct method for VRM 0.x and 1.0
                 const getBone = (name) => {
                     return vrm.humanoid.getNormalizedBoneNode?.(name) || 
                            vrm.humanoid.getRawBoneNode?.(name) ||
@@ -372,7 +287,6 @@ Rules:
                 const head = getBone('head');
                 const neck = getBone('neck');
 
-                // ===== IDLE POSE (Arms Down) =====
                 if (leftUpperArm) {
                     leftUpperArm.rotation.z = 1.1 + Math.sin(t * 0.8) * 0.05;
                     leftUpperArm.rotation.x = 0.2 + Math.sin(t * 0.6) * 0.03;
@@ -389,7 +303,6 @@ Rules:
                     rightLowerArm.rotation.y = -0.3 + Math.sin(t * 0.5 + 0.5) * 0.02;
                 }
 
-                // ===== BODY SWAY =====
                 if (spine) {
                     spine.rotation.x = Math.sin(t * 0.7) * 0.02;
                     spine.rotation.y = Math.sin(t * 0.4) * 0.03;
@@ -404,7 +317,6 @@ Rules:
                     hips.rotation.z = Math.sin(t * 0.6) * 0.01;
                 }
 
-                // ===== HEAD FOLLOWS MOUSE =====
                 targetLookX += (mouseY * 0.3 - targetLookX) * 0.05;
                 targetLookY += (mouseX * 0.4 - targetLookY) * 0.05;
 
@@ -418,7 +330,6 @@ Rules:
                     neck.rotation.y = targetLookY * 0.3;
                 }
 
-                // ===== BLINKING =====
                 blinkTimer += delta;
                 if (!isBlinking && blinkTimer > nextBlinkTime) {
                     isBlinking = true;
@@ -439,9 +350,7 @@ Rules:
                     }
                 }
 
-                // ===== BREATHING =====
                 vrm.scene.position.y = Math.sin(t * 1.2) * 0.005;
-
                 vrm.update(delta);
             }
             
@@ -466,14 +375,13 @@ Rules:
             document.getElementById('response').classList.remove('show');
         }
 
-        // ========== TTS (ElevenLabs) COM SINCRONIZAÇÃO MELHORADA ==========
+        // ========== TTS COM SINCRONIZAÇÃO ==========
         const ELEVENLABS_KEY = 'sk_5f944aef6384a6d2c079aeaf90e0c311cb3a992e67a7d4fd';
-        const VOICE_ID = 'piI8Kku0DcvcL6TTSeQt'; // Flicker
+        const VOICE_ID = 'piI8Kku0DcvcL6TTSeQt';
         let currentAudio = null;
 
         async function speak(text) {
             try {
-                // Happy expression while talking
                 vrm?.expressionManager?.setValue('happy', 0.5);
                 
                 const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
@@ -497,7 +405,6 @@ Rules:
                 const audioBlob = await response.blob();
                 const audioUrl = URL.createObjectURL(audioBlob);
                 
-                // 🎵 WEB AUDIO API SETUP - ANÁLISE EM TEMPO REAL
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 const analyser = audioContext.createAnalyser();
                 analyser.fftSize = 256;
@@ -508,18 +415,13 @@ Rules:
                 source.connect(analyser);
                 analyser.connect(audioContext.destination);
                 
-                // 🎤 SINCRONIZAÇÃO DA BOCA EM TEMPO REAL
                 let animationId;
                 function updateMouth() {
                     analyser.getByteFrequencyData(dataArray);
-                    
-                    // Calcula o volume médio do áudio
                     const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-                    const normalized = Math.min(average / 128, 1); // Normaliza para 0-1
+                    const normalized = Math.min(average / 128, 1);
                     
-                    // Aplica suavização e ajusta a abertura da boca
                     if (vrm?.expressionManager) {
-                        // Multiplicador de 0.8 para não abrir demais
                         vrm.expressionManager.setValue('aa', normalized * 0.8);
                     }
                     
@@ -527,12 +429,12 @@ Rules:
                 }
                 
                 currentAudio.onplay = () => {
-                    console.log('🎵 Áudio iniciado - sincronização ativada');
+                    console.log('🎵 Audio started - lip sync active');
                     updateMouth();
                 };
                 
                 currentAudio.onended = () => {
-                    console.log('🎵 Áudio finalizado');
+                    console.log('🎵 Audio finished');
                     cancelAnimationFrame(animationId);
                     vrm?.expressionManager?.setValue('aa', 0);
                     vrm?.expressionManager?.setValue('happy', 0);
@@ -542,7 +444,7 @@ Rules:
                 };
 
                 currentAudio.onerror = () => {
-                    console.error('❌ Erro no áudio');
+                    console.error('❌ Audio error');
                     cancelAnimationFrame(animationId);
                     vrm?.expressionManager?.setValue('aa', 0);
                 };
@@ -553,9 +455,8 @@ Rules:
                 console.error('TTS Error:', e);
                 vrm?.expressionManager?.setValue('aa', 0);
                 
-                // Fallback para TTS do navegador
                 if ('speechSynthesis' in window) {
-                    console.log('🔄 Usando fallback TTS do navegador');
+                    console.log('🔄 Using fallback browser TTS');
                     const u = new SpeechSynthesisUtterance(text);
                     u.rate = 1;
                     u.pitch = 1.3;
@@ -567,40 +468,76 @@ Rules:
             }
         }
 
-        // ========== CHAT ==========
+        // ========== CHAT COM GROQ ==========
         window.send = async function() {
             const input = document.getElementById('msg');
             const msg = input.value.trim();
-            if (!msg || !API_KEY) return;
+            if (!msg) return;
 
             input.value = '';
-            history.push({ role: 'user', parts: [{ text: msg }] });
             showResponse('', true);
             
-            // Surprised expression while thinking
             vrm?.expressionManager?.setValue('surprised', 0.3);
 
             try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`, {
+                console.log('📤 Sending to Groq:', msg);
+                
+                history.push({ role: 'user', content: msg });
+                
+                const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
                     body: JSON.stringify({
-                        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-                        contents: history
+                        model: 'llama-3.3-70b-versatile',
+                        messages: [
+                            { role: 'system', content: SYSTEM_PROMPT },
+                            ...history
+                        ],
+                        max_tokens: 150,
+                        temperature: 0.8
                     })
                 });
 
+                const data = await res.json();
+                console.log('📥 Groq response:', data);
+                
                 vrm?.expressionManager?.setValue('surprised', 0);
 
-                const data = await res.json();
-                const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Hmm... try again, master~";
-                history.push({ role: 'model', parts: [{ text: reply }] });
+                if (data.error) {
+                    console.error('❌ API error:', data.error);
+                    throw new Error(data.error.message || 'API Error');
+                }
+
+                const reply = data.choices?.[0]?.message?.content;
+                
+                if (!reply) {
+                    console.error('❌ Empty response');
+                    throw new Error('Empty response from AI');
+                }
+
+                console.log('✅ Reply:', reply);
+                history.push({ role: 'assistant', content: reply });
+                
+                // Keep history limited to last 10 messages
+                if (history.length > 10) {
+                    history = history.slice(-10);
+                }
+                
                 showResponse(reply);
                 speak(reply);
+                
             } catch (e) {
+                console.error('❌ Chat error:', e);
                 vrm?.expressionManager?.setValue('surprised', 0);
                 vrm?.expressionManager?.setValue('sad', 0.5);
-                showResponse("Something went wrong~");
+                
+                const errorMsg = `Sorry master~ ${e.message || 'Something went wrong...'}`;
+                showResponse(errorMsg);
+                speak(errorMsg);
+                
                 setTimeout(() => {
                     vrm?.expressionManager?.setValue('sad', 0);
                     hideResponse();
