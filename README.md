@@ -100,22 +100,14 @@ Create your own with VRoid Studio
 
 
 🔑 API Keys
-This project uses two APIs:
-Groq (AI Chat)
-
-Current: Public key included (limited rate)
-Recommended: Get your own free key at console.groq.com
-Limit: 14,400 requests/day (free tier)
-
+This project uses 1 APIs
 ElevenLabs (Voice)
 
 Current: Public key included (limited usage)
 Recommended: Get your own key at elevenlabs.io
 Limit: 10,000 characters/month (free tier)
 
-To use your own keys, update these lines in index.html:
-javascriptconst API_KEY = 'your_groq_api_key_here';
-const ELEVENLABS_KEY = 'your_elevenlabs_key_here';
+
 
 🎨 Customization
 Adjust Animation Speed
@@ -148,11 +140,6 @@ Grant microphone permissions when prompted
 Only works on HTTPS or localhost
 Check browser compatibility (Chrome, Edge work best)
 
-AI responses are slow/failing
-
-Check Groq API key is valid
-Verify your internet connection
-Check rate limits haven't been exceeded
 
 
 📝 Browser Compatibility
