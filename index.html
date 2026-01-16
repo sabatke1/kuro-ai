@@ -327,7 +327,12 @@ Rules:
                 console.log('Has expressionManager:', !!vrm.expressionManager);
                 
                 if (vrm.humanoid) {
-                    console.log('Humanoid bones:', Object.keys(vrm.humanoid.rawHumanBones || {}));
+                    // Check which method works for getting bones
+                    const testBone = vrm.humanoid.getNormalizedBoneNode?.('leftUpperArm') || 
+                                    vrm.humanoid.getRawBoneNode?.('leftUpperArm') ||
+                                    vrm.humanoid.getBoneNode?.('leftUpperArm');
+                    console.log('Bone access method works:', !!testBone);
+                    console.log('Test bone (leftUpperArm):', testBone);
                 }
                 
                 if (vrm.expressionManager) {
@@ -347,85 +352,68 @@ Rules:
             const delta = clock.getDelta();
             const t = clock.elapsedTime;
 
-            if (vrm) {
-                const bones = vrm.humanoid?.rawHumanBones;
+            if (vrm && vrm.humanoid) {
+                // Get bones using the correct method for VRM 0.x and 1.0
+                const getBone = (name) => {
+                    return vrm.humanoid.getNormalizedBoneNode?.(name) || 
+                           vrm.humanoid.getRawBoneNode?.(name) ||
+                           vrm.humanoid.getBoneNode?.(name);
+                };
+
+                const leftUpperArm = getBone('leftUpperArm');
+                const leftLowerArm = getBone('leftLowerArm');
+                const rightUpperArm = getBone('rightUpperArm');
+                const rightLowerArm = getBone('rightLowerArm');
+                const spine = getBone('spine');
+                const chest = getBone('chest');
+                const hips = getBone('hips');
+                const head = getBone('head');
+                const neck = getBone('neck');
+
+                // ===== IDLE POSE (Arms Down) =====
+                if (leftUpperArm) {
+                    leftUpperArm.rotation.z = 1.1 + Math.sin(t * 0.8) * 0.05;
+                    leftUpperArm.rotation.x = 0.2 + Math.sin(t * 0.6) * 0.03;
+                }
+                if (leftLowerArm) {
+                    leftLowerArm.rotation.y = 0.3 + Math.sin(t * 0.5) * 0.02;
+                }
                 
-                if (bones) {
-                    // ===== IDLE POSE (Arms Down) =====
-                    // Left arm
-                    if (bones.leftUpperArm?.node) {
-                        bones.leftUpperArm.node.rotation.set(
-                            0.2 + Math.sin(t * 0.6) * 0.03,      // X - slight forward
-                            0,                                    // Y
-                            1.1 + Math.sin(t * 0.8) * 0.05       // Z - arm down + sway
-                        );
-                    }
-                    if (bones.leftLowerArm?.node) {
-                        bones.leftLowerArm.node.rotation.set(
-                            0,
-                            0.3 + Math.sin(t * 0.5) * 0.02,      // Slight bend
-                            0.1
-                        );
-                    }
-                    
-                    // Right arm
-                    if (bones.rightUpperArm?.node) {
-                        bones.rightUpperArm.node.rotation.set(
-                            0.2 + Math.sin(t * 0.6 + 0.5) * 0.03,
-                            0,
-                            -1.1 + Math.sin(t * 0.8 + 0.5) * 0.05
-                        );
-                    }
-                    if (bones.rightLowerArm?.node) {
-                        bones.rightLowerArm.node.rotation.set(
-                            0,
-                            -0.3 + Math.sin(t * 0.5 + 0.5) * 0.02,
-                            -0.1
-                        );
-                    }
+                if (rightUpperArm) {
+                    rightUpperArm.rotation.z = -1.1 + Math.sin(t * 0.8 + 0.5) * 0.05;
+                    rightUpperArm.rotation.x = 0.2 + Math.sin(t * 0.6 + 0.5) * 0.03;
+                }
+                if (rightLowerArm) {
+                    rightLowerArm.rotation.y = -0.3 + Math.sin(t * 0.5 + 0.5) * 0.02;
+                }
 
-                    // ===== BODY SWAY (Dancing) =====
-                    if (bones.spine?.node) {
-                        bones.spine.node.rotation.set(
-                            Math.sin(t * 0.7) * 0.02,            // Forward/back
-                            Math.sin(t * 0.4) * 0.03,            // Left/right twist
-                            Math.sin(t * 0.5) * 0.02             // Side lean
-                        );
-                    }
-                    if (bones.chest?.node) {
-                        bones.chest.node.rotation.set(
-                            Math.sin(t * 0.8) * 0.015,
-                            Math.sin(t * 0.5) * 0.02,
-                            0
-                        );
-                    }
-                    if (bones.hips?.node) {
-                        bones.hips.node.rotation.set(
-                            0,
-                            Math.sin(t * 0.3) * 0.02,
-                            Math.sin(t * 0.6) * 0.01
-                        );
-                    }
+                // ===== BODY SWAY =====
+                if (spine) {
+                    spine.rotation.x = Math.sin(t * 0.7) * 0.02;
+                    spine.rotation.y = Math.sin(t * 0.4) * 0.03;
+                    spine.rotation.z = Math.sin(t * 0.5) * 0.02;
+                }
+                if (chest) {
+                    chest.rotation.x = Math.sin(t * 0.8) * 0.015;
+                    chest.rotation.y = Math.sin(t * 0.5) * 0.02;
+                }
+                if (hips) {
+                    hips.rotation.y = Math.sin(t * 0.3) * 0.02;
+                    hips.rotation.z = Math.sin(t * 0.6) * 0.01;
+                }
 
-                    // ===== HEAD FOLLOWS MOUSE =====
-                    // Smooth interpolation
-                    targetLookX += (mouseY * 0.3 - targetLookX) * 0.05;
-                    targetLookY += (mouseX * 0.4 - targetLookY) * 0.05;
+                // ===== HEAD FOLLOWS MOUSE =====
+                targetLookX += (mouseY * 0.3 - targetLookX) * 0.05;
+                targetLookY += (mouseX * 0.4 - targetLookY) * 0.05;
 
-                    if (bones.head?.node) {
-                        bones.head.node.rotation.set(
-                            targetLookX + Math.sin(t * 0.4) * 0.01,     // Look up/down + subtle movement
-                            targetLookY,                                  // Look left/right
-                            Math.sin(t * 0.3) * 0.02                     // Slight tilt
-                        );
-                    }
-                    if (bones.neck?.node) {
-                        bones.neck.node.rotation.set(
-                            targetLookX * 0.3,
-                            targetLookY * 0.3,
-                            0
-                        );
-                    }
+                if (head) {
+                    head.rotation.x = targetLookX + Math.sin(t * 0.4) * 0.01;
+                    head.rotation.y = targetLookY;
+                    head.rotation.z = Math.sin(t * 0.3) * 0.02;
+                }
+                if (neck) {
+                    neck.rotation.x = targetLookX * 0.3;
+                    neck.rotation.y = targetLookY * 0.3;
                 }
 
                 // ===== BLINKING =====
@@ -433,25 +421,23 @@ Rules:
                 if (!isBlinking && blinkTimer > nextBlinkTime) {
                     isBlinking = true;
                     blinkTimer = 0;
-                    nextBlinkTime = 2 + Math.random() * 4; // Random 2-6 seconds
+                    nextBlinkTime = 2 + Math.random() * 4;
                 }
 
-                if (isBlinking) {
-                    const blinkProgress = blinkTimer / 0.15; // 150ms blink
+                if (isBlinking && vrm.expressionManager) {
+                    const blinkProgress = blinkTimer / 0.15;
                     if (blinkProgress < 0.5) {
-                        // Closing
-                        vrm.expressionManager?.setValue('blink', blinkProgress * 2);
+                        vrm.expressionManager.setValue('blink', blinkProgress * 2);
                     } else if (blinkProgress < 1) {
-                        // Opening
-                        vrm.expressionManager?.setValue('blink', (1 - blinkProgress) * 2);
+                        vrm.expressionManager.setValue('blink', (1 - blinkProgress) * 2);
                     } else {
-                        vrm.expressionManager?.setValue('blink', 0);
+                        vrm.expressionManager.setValue('blink', 0);
                         isBlinking = false;
                         blinkTimer = 0;
                     }
                 }
 
-                // ===== BREATHING (whole body) =====
+                // ===== BREATHING =====
                 vrm.scene.position.y = Math.sin(t * 1.2) * 0.005;
 
                 vrm.update(delta);
