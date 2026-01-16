@@ -194,6 +194,8 @@
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
         import { VRMLoaderPlugin, VRMUtils } from 'https://unpkg.com/@pixiv/three-vrm@2.1.0/lib/three-vrm.module.min.js';
+        
+        console.log('🚀 Kuro AI - Versão com Sincronização de Voz Melhorada');
 
         // ========== CONFIG ==========
         let API_KEY = localStorage.getItem('kuro_gemini_key') || '';
@@ -464,10 +466,9 @@ Rules:
             document.getElementById('response').classList.remove('show');
         }
 
-        // ========== TTS (ElevenLabs) ==========
+        // ========== TTS (ElevenLabs) COM SINCRONIZAÇÃO MELHORADA ==========
         const ELEVENLABS_KEY = 'sk_5f944aef6384a6d2c079aeaf90e0c311cb3a992e67a7d4fd';
         const VOICE_ID = 'piI8Kku0DcvcL6TTSeQt'; // Flicker
-        let mouthInterval = null;
         let currentAudio = null;
 
         async function speak(text) {
@@ -475,14 +476,6 @@ Rules:
                 // Happy expression while talking
                 vrm?.expressionManager?.setValue('happy', 0.5);
                 
-                // Mouth animation
-                mouthInterval = setInterval(() => {
-                    if (vrm?.expressionManager) {
-                        const val = vrm.expressionManager.getValue('aa') > 0.3 ? 0 : 0.6;
-                        vrm.expressionManager.setValue('aa', val);
-                    }
-                }, 100);
-
                 const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
                     method: 'POST',
                     headers: {
@@ -504,10 +497,43 @@ Rules:
                 const audioBlob = await response.blob();
                 const audioUrl = URL.createObjectURL(audioBlob);
                 
+                // 🎵 WEB AUDIO API SETUP - ANÁLISE EM TEMPO REAL
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                
                 currentAudio = new Audio(audioUrl);
+                const source = audioContext.createMediaElementSource(currentAudio);
+                source.connect(analyser);
+                analyser.connect(audioContext.destination);
+                
+                // 🎤 SINCRONIZAÇÃO DA BOCA EM TEMPO REAL
+                let animationId;
+                function updateMouth() {
+                    analyser.getByteFrequencyData(dataArray);
+                    
+                    // Calcula o volume médio do áudio
+                    const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+                    const normalized = Math.min(average / 128, 1); // Normaliza para 0-1
+                    
+                    // Aplica suavização e ajusta a abertura da boca
+                    if (vrm?.expressionManager) {
+                        // Multiplicador de 0.8 para não abrir demais
+                        vrm.expressionManager.setValue('aa', normalized * 0.8);
+                    }
+                    
+                    animationId = requestAnimationFrame(updateMouth);
+                }
+                
+                currentAudio.onplay = () => {
+                    console.log('🎵 Áudio iniciado - sincronização ativada');
+                    updateMouth();
+                };
                 
                 currentAudio.onended = () => {
-                    clearInterval(mouthInterval);
+                    console.log('🎵 Áudio finalizado');
+                    cancelAnimationFrame(animationId);
                     vrm?.expressionManager?.setValue('aa', 0);
                     vrm?.expressionManager?.setValue('happy', 0);
                     vrm?.expressionManager?.setValue('relaxed', 0.3);
@@ -516,7 +542,8 @@ Rules:
                 };
 
                 currentAudio.onerror = () => {
-                    clearInterval(mouthInterval);
+                    console.error('❌ Erro no áudio');
+                    cancelAnimationFrame(animationId);
                     vrm?.expressionManager?.setValue('aa', 0);
                 };
 
@@ -524,11 +551,11 @@ Rules:
                 
             } catch (e) {
                 console.error('TTS Error:', e);
-                clearInterval(mouthInterval);
                 vrm?.expressionManager?.setValue('aa', 0);
                 
-                // Fallback to browser TTS
+                // Fallback para TTS do navegador
                 if ('speechSynthesis' in window) {
+                    console.log('🔄 Usando fallback TTS do navegador');
                     const u = new SpeechSynthesisUtterance(text);
                     u.rate = 1;
                     u.pitch = 1.3;
